@@ -5,6 +5,9 @@
 
 #include "MD5.h"  // function to perform MD5 hash on string
 
+#define MAX_CHUNKS 1000
+#define MAX_STRING_LENGTH MAX_CHUNKS*64-9
+
 /**
  * Convert 128-bit MD5 hash result to a 32-character hexadecimal string.
  * 
@@ -35,21 +38,21 @@ void get_input(char* buffer, size_t max_length);
 int main(int argc, char* argv[]) {
 
   // string to be hashed
-  uint8_t a_string[64];
+  uint8_t a_string[64 * MAX_CHUNKS];
 
   // prompt the user to enter a string
   printf(
     "Enter a string of no more than %d characters to be hashed: ",
-    MAX_TARGET_STR_LEN
+    MAX_STRING_LENGTH
   );
   fflush(stdout);
 
   // get user input; max string len does not include null terminating character
   // so add one, to max length to create room for that character
-  get_input(a_string, MAX_TARGET_STR_LEN + 1);
+  get_input(a_string, MAX_STRING_LENGTH + 1);
 
   // get the length of the inputted string
-  uint8_t string_len = strlen((char*) a_string);
+  uint32_t string_len = strlen((char*) a_string);
 
   // create an array to hold the hash result
   uint8_t hash_result[16];
@@ -58,7 +61,7 @@ int main(int argc, char* argv[]) {
   char hash_result_string[33];
 
   // calculate the MD5 hash of the string
-  md5_sum(a_string, string_len, hash_result);
+  inplace_md5_sum(a_string, string_len, hash_result);
 
   // convert the MD5 hash to a string of hex characters
   md5_hash_to_hex_str(hash_result, hash_result_string);

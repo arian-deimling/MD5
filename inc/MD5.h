@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#define MAX_TARGET_STR_LEN 55
-
 /**
  * Calculates the MD5 hash of an array of characters. 
  * 
@@ -24,4 +22,6 @@
  * @param hash_result A 16-byte array to hold/return the hash calculation
  * @return Void; hash result is returned into an array provided by caller
  */
-void md5_sum(uint8_t* string, uint8_t string_len, uint8_t* hash_result);
+void inplace_md5_sum(uint8_t* string,
+                     const uint32_t string_len,
+                     uint8_t* hash_result);
