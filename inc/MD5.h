@@ -1,6 +1,8 @@
 #include <Windows.h>
-
 #include <stdint.h>
+
+#ifndef MD5_H
+#define MD5_H
 
 /**
  * Calculates the MD5 hash of an array of characters. 
@@ -9,19 +11,33 @@
  * 
  * Given an array of 8-bit characters, the length of the character string,
  * and the array into which the result should be written, this function
- * will calculate the MD5 Hash of the given string. The string should
- * contain no more than 55 characters, but should be 64-bytes in length
+ * will calculate the MD5 Hash of the given string. The string can be of any
+ * length, but the array holding it should be a multiple of 64-bytes in length
  * to allow the function to add the padding as required by the MD5 hash
- * algorithm to be added to the end of the string.
+ * algorithm to be added to the end of the string (see get_md5_chunk_count()).
  * 
  * See https://en.wikipedia.org/wiki/MD5 for more information.
  * 
- * @param string A 64-byte array of 55 or less characters; bytes after the
- * characters will be modified by this function
+ * @param string A byte array with length that is a multiple of 64 bytes 
+ * containing a string of characters; array will be modified by the function
  * @param string_len Number of characters in the string to be hashed
  * @param hash_result A 16-byte array to hold/return the hash calculation
- * @return Void; hash result is returned into an array provided by caller
  */
 void inplace_md5_sum(uint8_t* string,
                      const uint32_t string_len,
                      uint8_t* hash_result);
+
+/**
+ * Get the number of 512-bit MD5 chunks are needed to hash a string of the
+ * given length in place.
+ * 
+ * Used in conjunction with the inplace MD5 hash function; use this function
+ * to determine how big the character array needs to be to allow the inplace
+ * hash function to add the necessary padding before performing the hash.
+ * 
+ * @param string_len Length of the string to be hashed (in bytes)
+ * @return the number of 64-byte chunks that will be used to perform the hash
+ */
+uint32_t get_md5_chunk_count(uint32_t string_len);
+
+#endif /* MD5_H */
