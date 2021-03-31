@@ -1,12 +1,10 @@
 #include <Windows.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "MD5.h"  // function to perform MD5 hash on string
-
-#define MAX_CHUNKS 1000
-#define MAX_STRING_LENGTH MAX_CHUNKS*64-9
 
 /**
  * Convert 128-bit MD5 hash result to a 32-character hexadecimal string.
@@ -37,19 +35,18 @@ void get_input(char* buffer, size_t max_length);
 
 int main(int argc, char* argv[]) {
 
-  // string to be hashed
-  uint8_t a_string[64 * MAX_CHUNKS];
+  // if an invalid number of arguments are given, print usage instructions
+  if (argc != 2) {
+    puts("Usage: ./md5hash.exe {string-to-hash}");
+    return 1;
+  }
 
-  // prompt the user to enter a string
-  printf(
-    "Enter a string of no more than %d characters to be hashed: ",
-    MAX_STRING_LENGTH
-  );
-  fflush(stdout);
+  // figure out how many md5 512-bit blocks are needed to perform the hash
+  uint32_t chunk_count = get_md5_chunk_count(strlen(argv[1]));
 
-  // get user input; max string len does not include null terminating character
-  // so add one, to max length to create room for that character
-  get_input(a_string, MAX_STRING_LENGTH + 1);
+  // create an array to hold the string to be hashed (plus padding)
+  uint8_t *a_string = malloc(chunk_count * 64 * sizeof(uint8_t));
+  strcpy((char*) a_string, argv[1]);
 
   // get the length of the inputted string
   uint32_t string_len = strlen((char*) a_string);
@@ -69,11 +66,9 @@ int main(int argc, char* argv[]) {
   // replace null terminating character which is removed by the hash function
   a_string[string_len] = 0x00;
 
-  printf(
-    "The result of the hash of %s is %s.",
-    (char*) a_string, 
-    hash_result_string
-  );
+  printf("%s is the hash of \"%s\"", hash_result_string, (char*) a_string);
+
+  free(a_string);
 
 }
 

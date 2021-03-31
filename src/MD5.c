@@ -139,3 +139,16 @@ void inplace_md5_sum(uint8_t* string,
   return;
 
 }
+
+uint32_t get_md5_chunk_count(uint32_t string_len) {
+
+  // 9 bytes of padding are required, blocks are 64 bytes long
+  uint32_t chunks = (string_len + 9) / 64;
+
+  // must fill out an entire 64 byte block; add another block if
+  // the string plus 9 bytes of padding was not a multiple of 64 bytes
+  chunks = (string_len + 9) % 64 != 0 ? 1 : 0;
+
+  return chunks;
+
+}
