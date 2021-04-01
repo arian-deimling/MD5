@@ -1,8 +1,13 @@
 CC = gcc
 CCFLAGS = -Iinc -O2
 
-# build target to make executable md5 hash command line program
-.PHONY: md5hash
+.PHONY: textdemo md5hash drmemtest clean
+
+# build target to (build and) run the executable with a random string
+textdemo: md5hash.exe
+	md5hash.exe -t abcdefghijklmnopqrstuvwxyz
+
+# build targets to make executable md5 hash command line program
 md5hash: md5hash.exe
 md5hash.exe: obj/md5hash.o obj/MD5.o
 	$(CC) -o $@ obj/MD5.o obj/md5hash.o $(CCFLAGS)
@@ -18,13 +23,15 @@ obj/MD5.o: src/MD5.c inc/MD5.h ./obj
 	mkdir $@
 
 # build target to delete all files generated while building the executable
-.PHONY: clean
 clean:
 	rmdir obj /s /q
 	del md5hash.exe
 
-# build target to test output executable with Dr Memory
-.PHONY: drmemtest
-drmemtest: src/md5hash.c src/MD5.c
+# build targets to test output executable with Dr Memory
+drmemtexttest: src/md5hash.c src/MD5.c
 	$(CC) -static -o md5hash.exe src/md5hash.c src/MD5.c -Iinc
-	drmemory md5hash.exe abcdefghijklmnopqrstuvwxyz
+	drmemory md5hash.exe -t abcdefghijklmnopqrstuvwxyz
+
+drmemfiletest: src/md5hash.c src/MD5.c
+	$(CC) -static -o md5hash.exe src/md5hash.c src/MD5.c -Iinc
+	drmemory md5hash.exe -f LICENSE

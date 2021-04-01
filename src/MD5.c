@@ -4,6 +4,11 @@ uint32_t left_rotate(uint32_t x, uint8_t bits) {
   return (x << bits) | (x >> (32 - bits));
 }
 
+uint32_t int_ceiling(uint32_t numerator, uint32_t denominator) {
+  return numerator / denominator  // integer division
+      + (numerator % denominator != 0 ? 1 : 0);  // ceiling
+}
+
 void inplace_md5_sum(uint8_t* string,
                      const uint32_t string_length,
                      uint8_t* hash_result) {
@@ -50,33 +55,34 @@ void inplace_md5_sum(uint8_t* string,
   uint32_t C0 = 0x98badcfe;
   uint32_t D0 = 0x10325476;
 
-  // MD5 padding is specified as being a singular 1 bit followed by 0 bits
-  // until we are 8 bytes away from the end of a 512-bit chunk; the length
-  // of the message in bits is added as an unsigned int in the last 8 bytes
-  //
-  // we will add a whole 0x80 byte for the 1 bit padding, then we must also
-  // have enough room to add the 8-byte unsigned int; therefore, add 9
-  // to the string length, then perform the ceiling of that number divided
-  // by 64 (bytes) to get the number of 512-bit chunks that we will need
-  uint32_t chunks = ((string_length + 1 + 8) / 64)  // int division portion
-    + ((string_length + 1 + 8) % 64 != 0);          // ceiling portion
+  // hash must occur on the input in 512-bit (64-byte) chunks; padding
+  // is required, and 0-bits fill empty space to fill final chunk
+  uint32_t chunks = get_md5_chunk_count(string_length);
 
-  // add 1 bit padding followed by the appropriate amount of 0 bit padding
+  // add 1-bit padding followed by the appropriate amount of 0 bit padding
   string[string_length] = 0x80;
 
   // after accounting for the string and the addition byte added above, add
   // enough padding to fill out to the end of the final 512-bit chunk
-  memset(&string[string_length + 1], 0, chunks * 64 - (string_length + 1));
+  memset(
+    &string[string_length + 1],
+    0,
+    chunks * MD5_CHUNK_BYTES - (string_length + 1)
+  );  
 
-  // reinterpret the last 8 bytes of the padding as a unsigned int and set its
-  // value to length of the message in bits (little endian)
-  *((uint64_t*) &string[64 * chunks - 8]) = string_length * 8;
+  // reinterpret the last 8 bytes of the padding as a unsigned int; per the MD5
+  // specification, this should hold the message length in bits mod 2^64
+  uint64_t* string_bit_length = 
+    (uint64_t*) &string[MD5_CHUNK_BYTES * chunks - 8];
+
+  // set the string bit length
+  *string_bit_length = string_length * 8;
 
   // iterate over each chunk in the padded message
   for (int chunk_number = 0; chunk_number < chunks; chunk_number++) {
 
     // reinterpret the current 512-bit chunk as 16 32-bit unsigned integers
-    uint32_t* M = (uint32_t*) &string[chunk_number * 64];
+    uint32_t* M = (uint32_t*) &string[chunk_number * MD5_CHUNK_BYTES];
  
     // initialize the values of A, B, C, D
     uint32_t A = A0;
@@ -130,7 +136,8 @@ void inplace_md5_sum(uint8_t* string,
 
   }
 
-  // use A0, B0, C0, D0 to set the values of the output hash result
+  // reinterpret the hash_result array as an array of 4 32-bit unsigned ints 
+  // and use A0, B0, C0, D0 to set the value of the output hash result
   ((uint32_t*) hash_result)[0] = A0;
   ((uint32_t*) hash_result)[1] = B0;
   ((uint32_t*) hash_result)[2] = C0;
@@ -141,14 +148,5 @@ void inplace_md5_sum(uint8_t* string,
 }
 
 uint32_t get_md5_chunk_count(uint32_t string_len) {
-
-  // 9 bytes of padding are required, blocks are 64 bytes long
-  uint32_t chunks = (string_len + 9) / 64;
-
-  // must fill out an entire 64 byte block; add another block if
-  // the string plus 9 bytes of padding was not a multiple of 64 bytes
-  chunks = (string_len + 9) % 64 != 0 ? 1 : 0;
-
-  return chunks;
-
+  return int_ceiling(string_len + MD5_MIN_PADDING_BYTES, MD5_CHUNK_BYTES);
 }

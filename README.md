@@ -7,7 +7,7 @@ This code was written and tested in Windows using MinGW; however, it can easily 
 ## Usage
 <ul>
   <li><code>mingw32-make md5hash</code> to build</li>
-  <li><code>./md5hash.exe "some-string-to-hash"</code> to run</li>
+  <li><code>md5hash.exe {-t text | -f file}</code> to run
 </ul>
 
 ### Additional Usage
