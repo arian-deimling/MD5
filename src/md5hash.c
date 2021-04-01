@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <getopt.h>
+#include <unistd.h>
 
 #include "MD5.h"  // function to perform MD5 hash on string
 
@@ -33,23 +35,128 @@ void md5_hash_to_hex_str(const uint8_t hash_array[], char output_string[]);
  */
 void get_input(char* buffer, size_t max_length);
 
+/**
+ * Provides the size, in bytes, of a file.
+ * 
+ * @param file_name Name/path of the file to get the size of
+ * @return The size of the file in bytes
+ */
+uint32_t get_file_size(const char* file_name);
+
 int main(int argc, char* argv[]) {
 
-  // if an invalid number of arguments are given, print usage instructions
-  if (argc != 2) {
-    puts("Usage: ./md5hash.exe {string-to-hash}");
-    return 1;
+  // disable debugging messages from the getopt() function in getopt.h
+  opterr = 0;
+
+  // usage string
+  const char* usage = "usage: %s {-t text | -f file}\n";
+  const char* executable_file = "md5hash.exe";
+
+  // command line argument value
+  char* string_to_hash = NULL;
+  char* file_to_hash = NULL;
+
+  // length of the string that is being hashed in bytes
+  uint32_t string_to_hash_length;
+
+  // number of md5 512-bit (64-byte) chunks used by the hash input
+  uint32_t chunk_count;
+
+  // character array containing hash input message
+  uint8_t* a_string;
+
+
+  // read command line arguments until none remain
+  int c = 0;
+  while ((c = getopt(argc, argv, "t:f:")) != -1) {
+
+    switch (c) {
+
+      // case where the user is providing a string to hash directly as a
+      // command line argument
+      case 't':
+
+        // get the string provided by the user
+        string_to_hash = optarg;
+        if (string_to_hash == NULL) {
+          fprintf(stderr, usage, executable_file);
+          exit(EXIT_FAILURE);
+        }
+
+        string_to_hash_length = strlen(string_to_hash);
+
+        // get number of md5 512-bit blocks are needed to perform the hash
+        chunk_count = get_md5_chunk_count(string_to_hash_length);
+
+        // create an array to hold the string to be hashed (plus padding)
+        a_string = malloc(MD5_CHUNK_BYTES * chunk_count * sizeof(uint8_t));
+        if (a_string == NULL) {
+          fprintf(stderr, "malloc failed at %s:%d", __FILE__, __LINE__ - 2);
+          exit(EXIT_FAILURE);
+        }
+
+        // copy the string provided into the hash input array
+        strncpy(
+          (char*) a_string, 
+          string_to_hash, 
+          MD5_CHUNK_BYTES * chunk_count
+        );
+
+        break;
+
+      // case where user is providing the name of a file to hash
+      case 'f':
+
+        // get the file name provided by the user
+        file_to_hash = optarg;
+        if (file_to_hash == NULL) {
+          fprintf(stderr, usage, executable_file);
+          exit(EXIT_FAILURE);
+        }
+
+        // check whether the file provided is accessible
+        if (access(file_to_hash, R_OK) != 0) {
+          fprintf(stderr, "%s is not available to be read", file_to_hash);
+          exit(EXIT_FAILURE);
+        }
+
+        // get the lenght of the file in bytes (ascii characters)
+        string_to_hash_length = get_file_size(file_to_hash);
+
+        // number of md5 512-bit chunks needed to perform hash
+        chunk_count = get_md5_chunk_count(string_to_hash_length);
+
+        // create an array to hold the string to be hashed (plus padding)
+        a_string = malloc(MD5_CHUNK_BYTES * chunk_count * sizeof(uint8_t));
+        if (a_string == NULL) {
+          fprintf(stderr, "malloc failed at %s:%d", __FILE__, __LINE__ - 2);
+          exit(EXIT_FAILURE);
+        }
+
+        // open the file and read contents into the hash input array
+        FILE* hash_file_ptr = fopen(file_to_hash, "rb");
+        uint32_t bytes_read = fread(
+          a_string, 1, string_to_hash_length, hash_file_ptr);
+
+        // make sure the entire file was read
+        if (string_to_hash_length != bytes_read) {
+          fclose(hash_file_ptr);
+          fprintf(stderr, "read from file %s failed", file_to_hash);
+          exit(EXIT_FAILURE);
+        }
+
+        // close the file 
+        fclose(hash_file_ptr);
+
+        break;
+
+      // case where the option provided was not recognized
+      case '?':
+      default:
+        fprintf(stderr, usage, executable_file);
+        exit(EXIT_FAILURE);
+    }
   }
-
-  // figure out how many md5 512-bit blocks are needed to perform the hash
-  uint32_t chunk_count = get_md5_chunk_count(strlen(argv[1]));
-
-  // create an array to hold the string to be hashed (plus padding)
-  uint8_t *a_string = malloc(chunk_count * 64 * sizeof(uint8_t));
-  strcpy((char*) a_string, argv[1]);
-
-  // get the length of the inputted string
-  uint32_t string_len = strlen((char*) a_string);
 
   // create an array to hold the hash result
   uint8_t hash_result[16];
@@ -58,17 +165,16 @@ int main(int argc, char* argv[]) {
   char hash_result_string[33];
 
   // calculate the MD5 hash of the string
-  inplace_md5_sum(a_string, string_len, hash_result);
+  inplace_md5_sum(a_string, string_to_hash_length, hash_result);
 
   // convert the MD5 hash to a string of hex characters
   md5_hash_to_hex_str(hash_result, hash_result_string);
 
-  // replace null terminating character which is removed by the hash function
-  a_string[string_len] = 0x00;
-
-  printf("%s is the hash of \"%s\"", hash_result_string, (char*) a_string);
+  printf("%s\n", hash_result_string);
 
   free(a_string);
+
+  exit(EXIT_SUCCESS);
 
 }
 
@@ -111,5 +217,21 @@ void get_input(char* buffer, size_t max_length) {
   if (buffer[strlen(buffer) - 1] == '\n') {
     buffer[strlen(buffer) - 1] = '\0';
   }
+
+}
+
+uint32_t get_file_size(const char* file_name) {
+
+  uint32_t file_size;
+
+  // open the file
+  FILE* file_ptr = fopen(file_name, "rb");
+
+  // seek to the end of the file and get the size of the file in bytes
+  fseek(file_ptr, 0L, SEEK_END);
+  file_size = ftell(file_ptr);
+
+  fclose(file_ptr);
+  return file_size;
 
 }

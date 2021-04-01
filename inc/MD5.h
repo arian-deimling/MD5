@@ -5,6 +5,20 @@
 #define MD5_H
 
 /**
+ * MD5 algorithm is performed on 64-byte chunks of the input and padding is
+ * added to the end of any input to make it's lenght a multiple of 64-bytes.
+ */
+static const uint32_t MD5_CHUNK_BYTES = 64;
+
+/**
+ * MD5 algorithm specification requires padding of a single 1-bit after the
+ * input; this implementation simply appends a 0b10000000 byte to fulfill this
+ * requirement. The final 8-bytes of the last chunk must be filled with the
+ * length of the input. In total, a minimum of 9 bytes are needed for padding.
+ */
+static const uint32_t MD5_MIN_PADDING_BYTES = 9;
+
+/**
  * Calculates the MD5 hash of an array of characters. 
  * 
  * *** THIS FUNCTION HAS NOT BEEN TESTED ON BIG ENDIAN SYSTEMS ***
