@@ -13,7 +13,7 @@ md5hash.exe: obj/md5hash.o obj/MD5.o
 	$(CC) -o $@ obj/MD5.o obj/md5hash.o $(CCFLAGS)
 
 # build targets for object files
-obj/md5hash.o: src/md5hash.c inc/MD5.h ./obj
+obj/md5hash.o: src/md5hash.c inc/MD5.h inc/md5hash.h ./obj
 	$(CC) -c src/md5hash.c -o $@ $(CCFLAGS)
 obj/MD5.o: src/MD5.c inc/MD5.h ./obj
 	$(CC) -c src/MD5.c -o $@ $(CCFLAGS)
